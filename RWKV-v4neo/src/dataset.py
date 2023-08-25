@@ -215,12 +215,12 @@ class MyDataset(Dataset):
                     # cheat: pick a random spot in dataset
                     i = np.random.randint(0, self.data_size - req_len)
                     
-                if args.doc_training == 1:
+                if args.doc_training != 0:
                     i = np.random.choice(self.seq_indexes)
 
                 if args.data_type == "binidx":
                     if args.my_pile_version == 1:
-                        dix = data.get(idx=0, offset=i, length=req_len).astype(int)
+                        dix = data.get(idx=0, offset=i if i + req_len < self.data_size else self.data_size - req_len-1, length=req_len).astype(int)
                         # if dix[0] == 0:
                     else:
                         # self.data : cutoff, chunk_count, data
@@ -228,7 +228,7 @@ class MyDataset(Dataset):
                             if i < data[j][0]:
                                 ii = i
                                 i = (i - (data[j-1][0] if j > 0 else 0)) % data[j][1]
-                                dix = data[j][2].get(idx=0, offset=i, length=req_len).astype(int)
+                                dix = data[j][2].get(idx=0, offset=i if i + req_len < self.data_size else self.data_size - req_len-1, length=req_len).astype(int)
                                 # print(ii, j, i)
                                 break
                 elif args.data_type == "numpy":
