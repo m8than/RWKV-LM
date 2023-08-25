@@ -56,6 +56,10 @@ if __name__ == "__main__":
     parser.add_argument("--wandb", default="", type=str)  # wandb project name. if "" then don't use wandb
     parser.add_argument("--proj_dir", default="out", type=str)
     parser.add_argument("--random_seed", default="-1", type=int)
+    
+    
+    parser.add_argument("--doc_training", default=0, type=int) # starts the sequence block on a token set by --doc_token
+    parser.add_argument("--doc_separator", default=0, type=int)
 
     parser.add_argument("--data_file", default="", type=str)
     parser.add_argument("--data_type", default="utf-8", type=str)

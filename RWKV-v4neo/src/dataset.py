@@ -19,6 +19,29 @@ class MyDataset(Dataset):
             self.vocab_size = args.vocab_size
             rank_zero_info(f"Current vocab size = {self.vocab_size} (make sure it's correct)")
 
+            if args.doc_training != 0:
+                # find all indexes of args.doc_sep and store their positions
+                sep_token = int(args.doc_separator)
+                self.seq_indexes = [0]
+                chunk_size = args.ctx_len * 30 if args.ctx_len * 10 < self.data_size else self.data_size
+                rank_zero_info("Preprocessing data...")
+                
+                for i in range(0, self.data_size, chunk_size):
+                    if i + chunk_size > self.data_size:
+                        chunk_size = self.data_size - i
+                    chunk = self.data.get(idx=0, offset=i, length=chunk_size).astype(int)
+                    for j in range(len(chunk)):
+                        if chunk[j] == sep_token:
+                            self.seq_indexes.append(i+j+1)
+                            
+                # output first 10 indexes
+                rank_zero_info(self.seq_indexes[:10])
+                        
+                ## remove the last one
+                self.seq_indexes.pop()
+                    
+                rank_zero_info(f"Data has {len(self.seq_indexes)} documents.")
+                
             if args.my_pile_version == 1:
                 self.data = MMapIndexedDataset(args.data_file)
                 self.data_size = len(self.data._bin_buffer) // self.data._index._dtype_size
@@ -191,10 +214,14 @@ class MyDataset(Dataset):
                 else:
                     # cheat: pick a random spot in dataset
                     i = np.random.randint(0, self.data_size - req_len)
+                    
+                if args.doc_training == 1:
+                    i = np.random.choice(self.seq_indexes)
 
                 if args.data_type == "binidx":
                     if args.my_pile_version == 1:
                         dix = data.get(idx=0, offset=i, length=req_len).astype(int)
+                        # if dix[0] == 0:
                     else:
                         # self.data : cutoff, chunk_count, data
                         for j in range(len(data)):
