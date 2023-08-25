@@ -18,6 +18,23 @@ class MyDataset(Dataset):
         if args.data_type == "binidx":
             self.vocab_size = args.vocab_size
             rank_zero_info(f"Current vocab size = {self.vocab_size} (make sure it's correct)")
+                
+            if args.my_pile_version == 1:
+                self.data = MMapIndexedDataset(args.data_file)
+                self.data_size = len(self.data._bin_buffer) // self.data._index._dtype_size
+                rank_zero_info(f"Data has {self.data_size} tokens.")
+            elif args.my_pile_version == 2:
+                data_list = open(args.data_file, "r", encoding='utf-8').read().strip().split('\n')
+                data_list = [i.strip().split(' ') for i in data_list]
+                self.data = []
+                self.data_size = int(data_list[-1][-1])
+                rank_zero_info(f"Data has {self.data_size} chunks.")
+                for d in data_list:
+                    data = MMapIndexedDataset(d[0])
+                    data_size = len(data._bin_buffer) // data._index._dtype_size
+                    assert (data_size - args.ctx_len) == int(d[1])
+                    self.data += [[int(d[-1]), int(d[1]), data]]
+                # rank_zero_info(self.data)
 
             if args.doc_training != 0:
                 # find all indexes of args.doc_sep and store their positions
@@ -42,23 +59,6 @@ class MyDataset(Dataset):
                     
                 rank_zero_info(f"Data has {len(self.seq_indexes)} documents.")
                 
-            if args.my_pile_version == 1:
-                self.data = MMapIndexedDataset(args.data_file)
-                self.data_size = len(self.data._bin_buffer) // self.data._index._dtype_size
-                rank_zero_info(f"Data has {self.data_size} tokens.")
-            elif args.my_pile_version == 2:
-                data_list = open(args.data_file, "r", encoding='utf-8').read().strip().split('\n')
-                data_list = [i.strip().split(' ') for i in data_list]
-                self.data = []
-                self.data_size = int(data_list[-1][-1])
-                rank_zero_info(f"Data has {self.data_size} chunks.")
-                for d in data_list:
-                    data = MMapIndexedDataset(d[0])
-                    data_size = len(data._bin_buffer) // data._index._dtype_size
-                    assert (data_size - args.ctx_len) == int(d[1])
-                    self.data += [[int(d[-1]), int(d[1]), data]]
-                # rank_zero_info(self.data)
-
             if args.my_qa_mask > 0:
                 # self.data_pile = MMapIndexedDataset('/fsx/pile/pile_20B_tokenizer_text_document')
                 self.data_pile = MMapIndexedDataset('/fsx/pile_deduped/pile_0.87_deduped_text_document')
